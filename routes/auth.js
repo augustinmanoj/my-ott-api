@@ -5,7 +5,7 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { response } = require('../app');
 const { v4: uuidv4 } = require('uuid'); 
-
+require("dotenv").config;
 router.post('/createuser', async (req, res) => {
     try {
         const { userName, emailId, password, role } = req.body;
@@ -70,36 +70,51 @@ router.post('/login', async (req, res) => {
         const { emailId, password } = req.body;
 
         if (!emailId || !password) {
-            return res.status(400).json({ message: "Email ID and password are required" });
+            return res.status(400).json({ message: "Email and password are required" });
         }
 
-        const user = await User.findOne({ emailId });
-        if (!user) {
-            return res.status(401).json({ message: "Authentication failed, email ID or password is incorrect" });
+        const user = await User.findOne({ emailId: emailId.toLowerCase() });
+        if (!user || !user.password) {
+            return res.status(401).json({ message: "Invalid credentials" });
         }
 
         const isPasswordMatched = await bcrypt.compare(password, user.password);
         if (!isPasswordMatched) {
-            return res.status(401).json({ message: "Authentication failed, email ID or password is incorrect" });
+            return res.status(401).json({ message: "Invalid credentials" });
+        }
+
+        if (!user.role) {
+            console.error(`Role missing for user: ${user.emailId}`);
+            return res.status(500).json({ message: "User role is missing. Please contact support." });
         }
 
         const token = jwt.sign(
-            { userId: user.userId, userName: user.userName, emailId: user.emailId },
-            "manoj",
-            { algorithm: "HS256", expiresIn: '1h' }
-        );
+            { userId: user.userId, userName: user.userName, emailId: user.emailId, role: user.role },
+            process.env.JWT_SECRET,
+            { algorithm: "HS256", expiresIn: "1h" }
+        );        
 
         res.status(200).json({
             message: "Login successful",
             token,
-            user: { userId: user.userId, userName: user.userName, emailId: user.emailId }
+            user: { userId: user.userId, userName: user.userName, emailId: user.emailId, role: user.role }
         });
+
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: "An error occurred during login", error: error.message });
+        console.error("Login Error:", error.message);
+        res.status(500).json({ message: "An error occurred during login" });
     }
 });
 
+router.get('/users', async(req,res)=>{
+    try {
+        let result = await User.find();
+        res.json(result);
+    } catch (err) {
+        console.error('Error fetching Users list:', err);
+        res.status(500).json({ error: 'Failed to fetch users list' });
+    }
+})
 
 
 module.exports = router;

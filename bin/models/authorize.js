@@ -6,13 +6,13 @@ const router = express.Router();
 
 function generateToken(user) {
     const payload = {
-        id: user.id,
+        id: user.userId,
         email: user.email,
         role: user.role,
     };
 
-    return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1h' });
-}
+    return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h" });
+};
 
 function authorize(req, res, next) {
     const authHeader = req.headers.authorization;
@@ -49,26 +49,41 @@ function authorize(req, res, next) {
     }
 }
 const authenticateAdmin = async (req, res, next) => {
-    const token = req.header('Authorization');
-    if (!token) return res.status(401).json({ message: 'Access Denied: No Token Provided' });
-  
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.id);
-      if (!user) return res.status(404).json({ message: 'User not found' });
-  
-      if (user.role !== 'admin') {
-        return res.status(403).json({ message: 'Access Denied: Admins Only' });
-      }
-  
-      req.user = user;
-      next();
+        const authHeader = req.header("Authorization");
+
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            return res.status(401).json({ message: "Access Denied: No Token Provided" });
+        }
+
+        const token = authHeader.split(" ")[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+        console.log("Decoded Token:", decoded);
+
+        // Fix: Use findOne({ userId: decoded.userId }) for UUIDs
+        const user = await User.findOne({ userId: decoded.userId });
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        console.log("Retrieved User:", user);
+
+        if (user.role !== "admin") {
+            return res.status(403).json({ message: "Access Denied: Admins Only" });
+        }
+
+        req.user = user;
+        next();
     } catch (error) {
-      return res.status(400).json({ message: 'Invalid Token' });
+        console.error("Auth Error:", error);
+        if (error.name === "TokenExpiredError") {
+            return res.status(401).json({ message: "Token Expired" });
+        }
+        return res.status(400).json({ message: "Invalid Token" });
     }
-  };
-  
-  // Admin route (accessible only by admins)
+};
+
   router.get('/admin/dashboard', authenticateAdmin, (req, res) => {
     res.json({
       message: 'Welcome to the Admin Dashboard!',

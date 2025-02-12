@@ -1,6 +1,6 @@
 const express = require('express');
 const WebSeries = require('../bin/models/web_series_model'); 
-const { authorize } = require('../bin/models/authorize');
+const { authorize, authenticateAdmin } = require('../bin/models/authorize');
 const router = express.Router();
 
 
@@ -25,7 +25,7 @@ router.get('/series/:seriesid', async (req, res) => {
   }
 });
 
-router.post('/newseries',authorize, async (req, res) => {
+router.post('/newseries',authenticateAdmin, async (req, res) => {
   try {
     const newWebSeries = await WebSeries.create(req.body); 
     if (!req.body.seriesId) {
@@ -39,7 +39,7 @@ router.post('/newseries',authorize, async (req, res) => {
 });
 
 
-router.put('/updateseries/:id', authorize,async (req, res) => {
+router.put('/updateseries/:id', authenticateAdmin,async (req, res) => {
   try {
     const updatedWebSeries = await WebSeries.findOneAndUpdate(
       { seriesId: req.params.id },
@@ -55,7 +55,7 @@ router.put('/updateseries/:id', authorize,async (req, res) => {
   }
 });
 
-router.delete('/deleteseries/:id',authorize, async (req, res) => {
+router.delete('/deleteseries/:id',authenticateAdmin, async (req, res) => {
   try {
     const deletedWebSeries = await WebSeries.findOneAndDelete({ seriesId: req.params.id });
     if (!deletedWebSeries) {
@@ -68,7 +68,7 @@ router.delete('/deleteseries/:id',authorize, async (req, res) => {
 });
 
 
- router.post('/:id/episodes', async (req, res) => {
+ router.post('/:id/episodes', authenticateAdmin,async (req, res) => {
   try {
     const webSeries = await WebSeries.findOne({ seriesId: req.params.id });
     if (!webSeries) {

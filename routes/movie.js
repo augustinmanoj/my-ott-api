@@ -30,7 +30,7 @@ router.post('/newmovielist',authenticateAdmin, async (req, res) => {
   }
 });
 
-router.delete('/deletelist',authorize,authenticateAdmin, async (req, res) => {
+router.delete('/deletelist',authenticateAdmin, async (req, res) => {
     try {
         const { movieId } = req.body; 
         let result = await Movie.deleteOne({ movieId });
